@@ -55,7 +55,7 @@ app.post("/register", async (request, response) => {
       }
     }
   } catch (e) {
-    console.log(`${e.message}`);
+    console.log(`registerPostMethodError:${e.message}`);
   }
 });
 
@@ -71,7 +71,7 @@ app.post("/login", async (request, response) => {
   } else {
     const passwordCorrect = await bcrypt.compare(password, results.password);
     if (passwordCorrect === true) {
-      response.send("Login success");
+      response.send("Login success!");
     } else {
       response.status(400);
       response.send("Invalid password");
@@ -82,27 +82,31 @@ app.post("/login", async (request, response) => {
 app.put("/change-password", async (request, response) => {
   try {
     const { username, oldPassword, newPassword } = request.body;
+    const encryptedPassword = await bcrypt.hash(newPassword, 10);
     const userDetails = `
     select * from user
     where username='${username}';`;
     const results = await db.run(userDetails);
-    if (oldPassword !== results.password) {
+    const s = await bcrypt.compare(oldPassword, results.password);
+    if (newPassword.length < 5) {
       response.status(400);
-      response.send("Invalid current password");
+      response.send("Password is too short");
     } else {
-      if (newPassword.length < 5) {
-        response.status(400);
-        response.send("Password is too short");
-      } else {
+      if (s === true) {
         const updatedPassword = `
         update user
         set(
-            password='${newPassword}'
+            password='${encryptedPassword}'
         );`;
+        const results = await db.run(updatedPassword);
         response.send("Password updated");
+      } else {
+        response.status(400);
+        response.send("Invalid current password");
       }
     }
   } catch (e) {
-    console.log(`${e.message}`);
+    console.log(`putMethodError:${e.message}`);
   }
 });
+module.exports = app;
